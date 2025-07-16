@@ -1,0 +1,21 @@
+{
+    "name": "candy-crush-cocos",
+    "uuid": "98b29517-2f84-4a00-bb47-5575a479eb57",
+    "creator": {
+        "version": "3.8.6"
+    },
+    "prettier": {
+        "tabWidth": 4,
+        "printWidth": 100,
+        "trailingComma": "es5",
+        "semi": false,
+        "singleQuote": true,
+        "bracketSpacing": true,
+        "jsxBracketSameLine": false,
+        "arrowParens": "always",
+        "endOfLine": "lf"
+    },
+    "devDependencies": {
+        "prettier": "^3.6.2"
+    }
+}
