@@ -17,6 +17,8 @@ export default class TileGrid extends Component {
 
     protected update(dt: number): void {
         if (this.choosingTile) this.progress = 0
+        this.progress += dt
+        console.log('Progress:', this.progress)
         if (this.progress >= 10) {
             const t = this.checkAll()
             console.log(t[0])
@@ -24,51 +26,10 @@ export default class TileGrid extends Component {
             // if (!this.checkPossible()) {
             //     this.shuffle()
             // }
+            this.shuffle()
             this.idleRun()
             this.progress = 0
         }
-    }
-
-    checkPossible(): boolean {
-        const rows = this.tileTable.length
-        const cols = this.tileTable[0].length
-
-        for (let y = 0; y < rows; y++) {
-            for (let x = 0; x < cols; x++) {
-                const tile = this.tileTable[y][x]
-                const neighbors: { dx: number; dy: number }[] = [
-                    { dx: 1, dy: 0 }, // Right
-                    { dx: 0, dy: 1 }, // Down
-                ]
-
-                for (const { dx, dy } of neighbors) {
-                    const newX = x + dx
-                    const newY = y + dy
-
-                    // Kiểm tra trong lưới
-                    if (newX >= cols || newY >= rows) continue
-
-                    const neighbor = this.tileTable[newY][newX]
-
-                    // Swap tạm thời
-                    ;[tile.coords, neighbor.coords] = [neighbor.coords, tile.coords]
-                    ;[this.tileTable[y][x], this.tileTable[newY][newX]] = [neighbor, tile]
-
-                    const matched = [...this.getMatch(tile), ...this.getMatch(neighbor)]
-
-                    // Swap lại
-                    ;[tile.coords, neighbor.coords] = [neighbor.coords, tile.coords]
-                    ;[this.tileTable[y][x], this.tileTable[newY][newX]] = [tile, neighbor]
-
-                    // Nếu có match thì hợp lệ
-                    if (matched.length > 0) {
-                        return true
-                    }
-                }
-            }
-        }
-
-        return false // Không có nước đi hợp lệ nào
     }
 
     idleRun() {
@@ -220,12 +181,14 @@ export default class TileGrid extends Component {
         }
         return this.tileTable[y][x] || null
     }
-    shuffle() {
+    async shuffle() {
         this.pool?.getList().forEach((element) => {
             let x = Math.floor(Math.random() * GameConfig.GridWidth)
             let y = Math.floor(Math.random() * GameConfig.GridHeight)
             this.swap(element, this.tileTable[x][y], false, true)
         })
+        await this.killAllSame()
+        await this.showTile()
     }
 
     getVerticleMatch(tile: Tile): Tile[] {
@@ -382,7 +345,9 @@ export default class TileGrid extends Component {
 
         await Promise.all([tile1.moveTo(pos2.x, pos2.y, 0.5), tile2.moveTo(pos1.x, pos1.y, 0.5)])
         if (!force) {
-            const matched = [...this.getMatch(tile1), ...this.getMatch(tile2)]
+            const matched1 = [...this.getMatch(tile1)]
+            const matched2 = [...this.getMatch(tile2)]
+            const matched = [...matched1, ...matched2]
             console.log('Matched tiles:', matched.length)
 
             if (matched.length === 0 && !bounce) {
@@ -394,7 +359,10 @@ export default class TileGrid extends Component {
 
                 await Promise.all([tile1.moveTo(pos1.x, pos1.y), tile2.moveTo(pos2.x, pos2.y)])
             } else {
-                await this.killAllSame()
+                const promises: Promise<void>[] = []
+                if (matched1.length > 0) promises.push(this.killMultipleGrid(matched1))
+                if (matched2.length > 0) promises.push(this.killMultipleGrid(matched2))
+                await Promise.all(promises)
                 await this.showTile()
             }
         }
