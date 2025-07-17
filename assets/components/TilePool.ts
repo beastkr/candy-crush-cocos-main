@@ -26,12 +26,15 @@ export default class TilePool extends Component {
         tile.used = true
         return tile
     }
+
     setupPrefab(prefab: Prefab): void {
         this.tilePrefab = prefab
     }
-    returnPool(tile: Tile): void {
+    async returnPool(tile: Tile) {
         tile.node.active = false
         tile.used = false
+        tile.setEffect('tile')
+        tile.node.setPosition(tile.node.position.x, 1000)
     }
     initPool(n: number): void {
         for (let i = 0; i < n; i++) {

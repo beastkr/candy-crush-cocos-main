@@ -1,6 +1,7 @@
 import {
     _decorator,
     Button,
+    Color,
     Component,
     Node,
     resources,
@@ -18,6 +19,8 @@ const { ccclass, property } = _decorator
 @ccclass('Tile')
 export class Tile extends Component {
     @property(Sprite)
+    private light: Sprite | null = null
+    @property(Sprite)
     private sprite: Sprite | null = null
     public used: boolean = false
     public coords: { x: number; y: number } = { x: 0, y: 0 }
@@ -26,13 +29,18 @@ export class Tile extends Component {
 
     private callbacks: Array<(tile: Tile) => void> = []
     private flipTween: Tween<Node> | null = null
-
+    public effect: string = 'tile' // Default effect
+    private onDeadCallback: Array<(tile: Tile) => Promise<void>> = []
     protected __preload(): void {
         if (!this.sprite) throw new Error('Sprite is required')
     }
 
     public addOnClickCallback(callback: (tile: Tile) => void) {
         this.callbacks.push(callback)
+    }
+
+    public addOnDead(callback: (tile: Tile) => Promise<void>) {
+        this.onDeadCallback.push(callback)
     }
 
     public removeOnClickCallback(callback?: (tile: Tile) => void) {
@@ -43,11 +51,38 @@ export class Tile extends Component {
         }
     }
 
+    getonDeadCallBack() {
+        return this.onDeadCallback
+    }
+    protected update(dt: number): void {
+        if (this.light)
+            this.light.color = new Color(
+                this.sprite?.color.r,
+                this.sprite?.color.g,
+                this.sprite?.color.b,
+                10
+            )
+    }
+
+    public async emitOnDead() {
+        const prom: Promise<void>[] = []
+        for (const callback of this.onDeadCallback) {
+            prom.push(callback(this))
+        }
+        this.onDeadCallback = []
+        await Promise.all(prom)
+    }
+
     /**
      * Referenced by button's click event handler
      * in the editor
      * */
     public emitOnClick() {
+        console.log(this.coords)
+        // if (this.effect != '') {
+        //     this.emitOnDead()
+        //     return
+        // }
         for (const callback of this.callbacks) {
             callback(this)
         }
@@ -77,11 +112,8 @@ export class Tile extends Component {
 
     public setTileType(tileType: string) {
         this.tileType = tileType
-        const spriteFrame = resources.get(`images/tile/spriteFrame`, SpriteFrame)
-        if (this.sprite) this.sprite.color = GameConfig.CandyColor[tileType]
 
-        if (!spriteFrame) throw new Error(`Sprite frame for ${tileType} not found`)
-        this.sprite!.spriteFrame = spriteFrame
+        if (this.sprite) this.sprite.color = GameConfig.CandyColor[tileType]
     }
 
     protected onDestroy(): void {
@@ -95,7 +127,7 @@ export class Tile extends Component {
             .to(0.1, { eulerAngles: new Vec3(0, 0, 0) }, { easing: 'bounceOut' }) // Reset cleanly
             .start()
     }
-    public moveTo(
+    public async moveTo(
         x: number,
         y: number,
         scale: number = 1,
@@ -136,6 +168,13 @@ export class Tile extends Component {
                 })
                 .start()
         })
+    }
+    setEffect(eff: string) {
+        this.effect = eff
+        if (eff != 'pend') {
+            const spriteFrame = resources.get(`images/${eff}/spriteFrame`, SpriteFrame)
+            this.sprite!.spriteFrame = spriteFrame
+        }
     }
 
     public Bounce(tile: Tile) {
