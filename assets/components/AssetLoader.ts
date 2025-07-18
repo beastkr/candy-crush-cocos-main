@@ -8,7 +8,7 @@ export class AssetLoader extends Component {
 
     protected __preload(): void {
         if (!this.progressBar) throw new Error('ProgressBar is required')
-        director.preloadScene('GameScene')
+        director.preloadScene('GameScene-refactor')
         resources.preloadDir('images')
     }
 
@@ -35,6 +35,6 @@ export class AssetLoader extends Component {
     }
 
     private switchToGameScene() {
-        director.loadScene('GameScene')
+        director.loadScene('GameScene-refactor')
     }
 }

@@ -106,7 +106,7 @@ export default class TileGrid extends Component {
 
             if (canKill) {
                 for (const key of groupKeys) visited.add(key)
-                promises.push(this.killMultipleGrid(group, true))
+                promises.push(this.killMultipleGrid(group, true, group.length > 3))
             }
         }
         console.log(promises)
@@ -479,8 +479,16 @@ export default class TileGrid extends Component {
                 const promises: Promise<void>[] = []
                 if (matched.length > 0) {
                     await Promise.all([
-                        this.killMultipleGrid(this.getMatch(tile1), true, false),
-                        this.killMultipleGrid(this.getMatch(tile2), true, false),
+                        this.killMultipleGrid(
+                            this.getMatch(tile1),
+                            true,
+                            this.getMatch(tile1).length > 3
+                        ),
+                        this.killMultipleGrid(
+                            this.getMatch(tile2),
+                            true,
+                            this.getMatch(tile2).length > 3
+                        ),
                     ])
                     await this.moveUnusedTilesUp()
                 }
