@@ -4,6 +4,7 @@ import BoardState from './BoardState'
 class FallState extends BoardState {
     promises: Promise<void>[] = []
     public onEnter(): void {
+        if (this.board.pausing) this.board.switchState('pause')
         this.promises = []
         console.log('move down')
         this.reShowTile()
@@ -22,6 +23,7 @@ class FallState extends BoardState {
                 if (!dia.node.active) {
                     dia.randomType()
                 }
+                dia.node.setScale(1, 1, 1)
             }
         }
     }

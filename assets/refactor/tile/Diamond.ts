@@ -1,14 +1,18 @@
 import {
     _decorator,
+    AudioSource,
     Color,
     Component,
+    instantiate,
     Node,
     ParticleSystem2D,
+    Prefab,
     resources,
     Sprite,
     SpriteFrame,
     Tween,
     tween,
+    TweenEasing,
     Vec3,
 } from 'cc'
 import GameConfig from '../../constants/GameConfig'
@@ -23,19 +27,29 @@ const { ccclass, property } = _decorator
 
 @ccclass('Diamond')
 class Diamond extends Component {
+    public rowFX: Sprite[] = []
     @property(ParticleSystem2D)
     public particle: ParticleSystem2D | null = null
     @property(Sprite)
     private sprite: Sprite | null = null
     @property(Sprite)
     private light: Sprite | null = null
+    @property(Prefab)
+    private rowFXPrefab: Prefab | null = null
+    @property(AudioSource)
+    public sfx: AudioSource | null = null
+
     private coordinate: { x: number; y: number } = { x: 0, y: 0 }
+    public lastcoordinate: { x: number; y: number } = { x: 0, y: 0 }
     private type: string = 'type1'
     private effect: string = 'tile'
     private onClickCallbacks: ((diamond: Diamond) => void)[] = []
     public staple: boolean = false
     public onKillCallbacks: ((diamond: Diamond) => void)[] = []
     private flipTween: Tween<Node> | null = null
+
+    public hintTween: Tween<Sprite> | null = null
+    public lightHintTween: Tween<Sprite> | null = null
     public pending: boolean = false
     private subTiles: { [key: string]: SubTile } = {
         row: new RowSubTile(this),
@@ -48,6 +62,12 @@ class Diamond extends Component {
 
     public getCoordinate(): { x: number; y: number } {
         return { x: this.coordinate.x, y: this.coordinate.y }
+    }
+    constructor() {
+        super()
+    }
+    getSprite() {
+        return this.sprite
     }
     protected update(dt: number): void {}
 
@@ -95,6 +115,49 @@ class Diamond extends Component {
             this.flipTween.start()
         }
     }
+    public hint() {
+        if (!this.sprite || !this.sprite.isValid) return
+        if (!this.light || !this.light.isValid) return
+
+        const startColor = this.sprite.color.clone()
+        if (!this.hintTween)
+            this.hintTween = tween(this.sprite)
+                .repeatForever(
+                    tween()
+                        .to(0.2, {
+                            color: new Color(startColor.r, startColor.g, startColor.b, 100),
+                        })
+                        .to(0.2, {
+                            color: new Color(startColor.r, startColor.g, startColor.b, 255),
+                        })
+                )
+                .start()
+        else this.hintTween.start()
+        if (!this.lightHintTween)
+            this.lightHintTween = tween(this.light)
+                .repeatForever(
+                    tween()
+                        .to(0.2, {
+                            color: new Color(startColor.r, startColor.g, startColor.b, 50),
+                        })
+                        .to(0.2, {
+                            color: new Color(startColor.r, startColor.g, startColor.b, 20),
+                        })
+                )
+                .start()
+        else this.lightHintTween.start()
+    }
+    public unhint() {
+        if (!this.sprite || !this.sprite.isValid) return
+        if (!this.light || !this.light.isValid) return
+
+        const startColor = this.sprite.color.clone()
+        this.lightHintTween?.stop()
+        this.hintTween?.stop()
+        this.lightOff()
+        this.sprite.color = new Color(startColor.r, startColor.g, startColor.b, 255)
+    }
+
     public release(): void {
         this.flipTween?.stop()
 
@@ -149,8 +212,17 @@ class Diamond extends Component {
         if (eff != 'tile') this.currentSubTile = this.subTiles[eff]
         else this.currentSubTile = null
     }
-
-    public doShrink(newScale: number, duration: number = 0.4): Promise<void> {
+    public createFX(board: Match3Board) {
+        for (let i = 0; i < 2; i++) {
+            const node = instantiate(this.rowFXPrefab) as Node | null
+            const rowFXSprite = node?.getComponent(Sprite)
+            if (node) board.node.addChild(node)
+            if (rowFXSprite) this.rowFX.push(rowFXSprite)
+        }
+        console.log(this.rowFX)
+    }
+    public doShrink(newScale: number, duration: number = 0.4, board: Match3Board): Promise<void> {
+        // this.lastcoordinate = { x: this.coordinate.x, y: this.coordinate.y }
         this.particle!.startColor = this.light!.color = new Color(
             this.sprite?.color.r,
             this.sprite?.color.g,
@@ -160,9 +232,10 @@ class Diamond extends Component {
         this.pending = true
         this.particle?.resetSystem()
         return new Promise<void>((resolve: Function) => {
-            tween(this.node)
+            tween(this.sprite!.node)
                 .to(duration, { scale: new Vec3(newScale, newScale) }, { easing: 'sineIn' })
                 .call(() => {
+                    Match3Board.increase()
                     resolve()
                 })
                 .start()
@@ -171,10 +244,15 @@ class Diamond extends Component {
     public getRelative(board: Match3Board): Diamond[] {
         return this.currentSubTile!.getRelative(board)
     }
-    public move(targetX: number, targetY: number): Promise<void> {
+    public move(
+        targetX: number,
+        targetY: number,
+        duration: number = 0.7,
+        easing: TweenEasing = 'bounceOut'
+    ): Promise<void> {
         return new Promise<void>((resolve: Function) => {
             tween(this.node)
-                .to(0.7, { position: new Vec3(targetX, targetY) }, { easing: 'bounceOut' })
+                .to(duration, { position: new Vec3(targetX, targetY) }, { easing: easing })
                 .call(() => resolve())
                 .start()
         })

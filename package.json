@@ -16,6 +16,10 @@
         "endOfLine": "lf"
     },
     "devDependencies": {
+        "gh-pages": "^6.3.0",
         "prettier": "^3.6.2"
+    },
+    "scripts": {
+        "deploy": "gh-pages -d build/web-desktop"
     }
 }

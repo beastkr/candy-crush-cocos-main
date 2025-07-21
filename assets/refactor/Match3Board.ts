@@ -1,21 +1,59 @@
-import { _decorator, Component, instantiate, Node, Prefab, Sprite, Vec3 } from 'cc'
+import {
+    _decorator,
+    AudioSource,
+    Component,
+    instantiate,
+    Node,
+    ParticleSystem2D,
+    Prefab,
+    Sprite,
+    Vec3,
+} from 'cc'
 import GameConfig from '../constants/GameConfig'
 import BoardState from './boardstates/BoardState'
 import FallState from './boardstates/FallState'
 import IdleState from './boardstates/IdleState'
 import KillState from './boardstates/KillState'
+import PauseState from './boardstates/PauseState'
+import ShuffleState from './boardstates/ShuffleState'
 import Diamond from './tile/Diamond'
 
 const { ccclass, property } = _decorator
 
 @ccclass('Match3Board')
 class Match3Board extends Component {
+    public isOver: boolean = false
+    @property(Node)
+    public starPos: Node[] = []
+    @property(Node)
+    public boardNode: Node | null = null
     @property(Sprite)
     public cursor: Sprite | null = null
     @property(Prefab)
     private diamondPrefab: Prefab | null = null
     @property(Prefab)
-    private brickPrefab: Prefab | null = null
+    public brickPrefab: Prefab | null = null
+    @property(Node)
+    public bgNode: Node | null = null
+    public pausing = false
+    public mileStone: number = 500
+    public turn = 5
+    @property(ParticleSystem2D)
+    public confetti: ParticleSystem2D[] = []
+    @property(AudioSource)
+    public sfx: AudioSource | null = null
+    @property(AudioSource)
+    public diaSFX: AudioSource | null = null
+
+    static score: number = 0
+    static SoundOn: boolean = true
+    public highscore: number = 0
+
+    public launchConfetti() {
+        this.confetti.forEach((element) => {
+            ;(element as ParticleSystem2D).resetSystem()
+        })
+    }
 
     private state: { [key: string]: BoardState } = {}
     private currentState: BoardState | null = null
@@ -26,27 +64,66 @@ class Match3Board extends Component {
             idle: new IdleState(this),
             kill: new KillState(this),
             fall: new FallState(this),
+            shuffle: new ShuffleState(this),
+            pause: new PauseState(this),
+        }
+    }
+    public isGameOver() {
+        return this.turn <= 0
+    }
+
+    public getHighscore() {
+        this.highscore = Number(localStorage.getItem('highscore')) || 0
+    }
+    public setHighscore() {
+        if (Match3Board.score > this.highscore) {
+            this.highscore = Match3Board.score
+            localStorage.setItem('highscore', String(Match3Board.score))
         }
     }
     public getCurrentState() {
         return this.currentState
     }
+    public pause() {
+        this.switchState('pause')
+        this.pausing = true
+    }
+    public unpause() {
+        if (this.pausing) {
+            this.pausing = false
+            this.switchState('fall')
+        }
+    }
+    public disableBG() {
+        this.bgNode!.active = false
+    }
+    public enableBG() {
+        this.bgNode!.active = true
+    }
     protected update(dt: number): void {
+        // console.log(this.currentState)
+        // if (Match3Board.SoundOn && !this.sfx?.playing) this.sfx?.play()
         this.currentState?.onUpdate()
     }
     protected start(): void {
+        if (!Match3Board.SoundOn) this.sfx?.pause()
+        else this.sfx?.play()
+        Match3Board.score = 0
         this.createBoard()
-        this.switchState('idle')
+        this.switchState('shuffle')
+        this.getHighscore()
     }
 
-    public switchState(state: string) {
+    public switchState(state: string, first?: boolean, dia?: Diamond[]) {
+        if (this.pausing) return
         console.log('switch tp: ', state)
         this.currentState?.onExit()
         this.currentState = this.state[state]
-        this.currentState.onEnter()
+        this.currentState.onEnter(first, dia)
     }
 
     private createBoard() {
+        this.node?.addChild(this.cursor!.node)
         for (var y = 0; y < GameConfig.GridHeight; y++) {
             this.board[y] = []
             for (var x = 0; x < GameConfig.GridWidth; x++) {
@@ -60,10 +137,13 @@ class Match3Board extends Component {
             }
         }
     }
+    public canPause() {
+        return !(this.currentState instanceof ShuffleState && !this.pausing)
+    }
 
     private createBorder(x: number, y: number) {
         const border = instantiate(this.brickPrefab) as Node | null
-        this.node.addChild(border!)
+        this.bgNode!.addChild(border!)
         border?.setPosition(
             new Vec3(Match3Board.coordToPos(x, y).x, Match3Board.coordToPos(x, y).y, -1)
         )
@@ -71,12 +151,14 @@ class Match3Board extends Component {
     private addDiamond(x: number, y: number): Diamond {
         const diamondNode = instantiate(this.diamondPrefab) as Node | null
         const diamond = diamondNode?.getComponent(Diamond)
-        this.node.addChild(diamondNode!)
+        this.boardNode?.addChild(diamondNode!)
         diamond!.randomType()
         diamond?.setCoordinate(x, y)
-        diamondNode?.setPosition(
-            new Vec3(Match3Board.coordToPos(x, y).x, Match3Board.coordToPos(x, y).y)
-        )
+        diamond!.lastcoordinate = { x: x, y: y }
+        diamond?.createFX(this)
+        // diamondNode?.setPosition(
+        //     new Vec3(Match3Board.coordToPos(x, y).x, Match3Board.coordToPos(x, y).y)
+        // )
         return diamond!
     }
 
@@ -92,6 +174,12 @@ class Match3Board extends Component {
                 y * GameConfig.TileHeight
             ),
         }
+    }
+    public getProgress(): number {
+        return Match3Board.score / this.mileStone > 1 ? 1 : Match3Board.score / this.mileStone
+    }
+    static increase() {
+        Match3Board.score += 10
     }
     public getVerticleMatch(dia: Diamond, type: string = dia.getType()): Diamond[] {
         let temp: Diamond[] = []

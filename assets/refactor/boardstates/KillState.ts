@@ -4,23 +4,40 @@ import Diamond from '../tile/Diamond'
 import BoardState from './BoardState'
 
 class KillState extends BoardState {
-    private combinePromise: Promise<void>[] = []
+    private isFirstKill: boolean = false
+    private swappedDia: Diamond[] = []
     private promises: Promise<void>[] = []
-    public onEnter(): void {
+    public onEnter(first: boolean = false, dia: Diamond[] = []): void {
+        if (this.board.pausing) this.board.switchState('pause')
         console.log('kill')
         this.promises = []
-        this.combinePromise = []
-        this.killAllSame()
+        if (first) {
+            this.startKillTurn(dia[0], dia[1])
+            this.firstKill()
+        } else this.killAllSame()
         Promise.all(this.promises).then(() => {
             this.pushAll()
             this.pendDone()
             this.board.switchState('fall')
         })
     }
-    public onExit(): void {}
+    public onExit(): void {
+        this.isFirstKill = false
+        this.swappedDia = []
+    }
     public onUpdate(): void {}
 
+    public startKillTurn(dia1: Diamond, dia2: Diamond) {
+        this.swappedDia.push(dia1)
+        this.swappedDia.push(dia2)
+    }
+    public firstKill() {
+        this.killMultipleGrid(this.board.getMatch(this.swappedDia[0]))
+        this.killMultipleGrid(this.board.getMatch(this.swappedDia[1]))
+    }
+
     public killMultipleGrid(diamonds: Diamond[], createEff: boolean = true): void {
+        if (Match3Board.SoundOn) this.board.diaSFX?.play()
         diamonds = diamonds.filter((d) => !d.pending)
         for (const dia of diamonds) {
             this.handleSpecial(dia)
@@ -32,7 +49,7 @@ class KillState extends BoardState {
         diamonds = diamonds.filter((d) => !d.pending)
         for (const dia of diamonds) {
             if (dia.getEffect() == 'tile') {
-                const prom = dia.doShrink(0)
+                const prom = dia.doShrink(0, 0.4, this.board)
                 this.promises.push(prom)
             }
         }
@@ -42,10 +59,8 @@ class KillState extends BoardState {
             for (const d of row) {
                 if (d.pending) {
                     d.node.active = false
-                    d.node.setScale(1, 1)
                     d.pending = false
-                } else {
-                    d.node.setScale(1, 1)
+                    d.getSprite()?.node.setScale(1, 1, 1)
                 }
             }
         }
@@ -55,7 +70,7 @@ class KillState extends BoardState {
         for (const d of temp) {
             this.promises.push(
                 new Promise<void>((resolve) => {
-                    tween(d.node)
+                    tween(d.getSprite()!.node)
                         .to(0.2, { position: dia.node.position })
                         .call(() => resolve())
                         .start()
@@ -67,7 +82,7 @@ class KillState extends BoardState {
     public handleSpecial(dia: Diamond): void {
         if (dia.getEffect() != 'tile') {
             this.promises.push(...dia.emitOnKill(this.board))
-            dia.doShrink(0)
+            dia.doShrink(0, 0.4, this.board)
             // Get related diamonds and add them to be processed, but don't recursively call handleSpecial
             const relatedDiamonds = dia.getRelative(this.board)
             this.killMultipleGrid(relatedDiamonds, false)
@@ -100,7 +115,7 @@ class KillState extends BoardState {
     makeEffect(dia: Diamond[]) {
         if (dia.length == 4) {
             if (this.board.getVerticleMatch(dia[0]).length == 4) this.addRowEffect(dia[0])
-            else this.addRainbowEffect(dia[0])
+            else this.addColumnEffect(dia[0])
         }
         if (dia.length >= 5) {
             if (
@@ -108,8 +123,7 @@ class KillState extends BoardState {
                 this.board.getHorizontalMatch(dia[0]).length == 0
             ) {
                 this.addRainbowEffect(dia[0])
-            }
-            this.addExplosionEffect(dia[0])
+            } else this.addExplosionEffect(dia[0])
         }
         // if (dia.length > 0) dia[0].node.setScale(new Vec3(1, 1, 1))
     }
@@ -163,15 +177,27 @@ class KillState extends BoardState {
                     }
                 }
 
+                let unmoveTile = finalMatch.filter((d) => d.getCoordinate().y == d.lastcoordinate.y)
+                let movedTile = finalMatch.filter((d) => d.getCoordinate().y != d.lastcoordinate.y)
+
+                let matching = []
+                matching.push(...movedTile, ...unmoveTile)
+                console.log(matching)
+
                 if (canKill) {
                     for (const k of killKeys) visited.add(k)
-                    this.killMultipleGrid(finalMatch)
+                    this.killMultipleGrid(matching)
                 }
             }
         }
     }
 
     private pushAll() {
+        for (const row of this.board.board) {
+            for (const dia of row) {
+                dia.lastcoordinate = { x: dia.getCoordinate().x, y: dia.getCoordinate().y }
+            }
+        }
         const rows = this.board.board.length
         const cols = this.board.board[0].length
 

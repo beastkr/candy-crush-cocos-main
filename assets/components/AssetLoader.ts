@@ -10,6 +10,7 @@ export class AssetLoader extends Component {
         if (!this.progressBar) throw new Error('ProgressBar is required')
         director.preloadScene('GameScene-refactor')
         resources.preloadDir('images')
+        resources.preloadDir('sfx')
     }
 
     start() {

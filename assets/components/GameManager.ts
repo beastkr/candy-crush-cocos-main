@@ -41,6 +41,7 @@ export default class GameManager extends Component {
             console.error('TilePrefab is not assigned in GameManager')
         }
     }
+
     protected async update(dt: number) {
         this.scoreText!.string = String(GameManager.Score)
 
