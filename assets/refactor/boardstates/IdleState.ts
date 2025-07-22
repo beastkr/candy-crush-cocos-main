@@ -9,10 +9,10 @@ class IdleState extends BoardState {
     private secondChosen: Diamond | null = null
     private staple: [boolean, boolean] = [true, true]
 
-    public onEnter(): void {
+    public async onEnter() {
         if (this.board.getProgress() >= 1) {
             this.board.launchConfetti()
-            this.board.turn += 5
+            this.board.turn += 10
             console.log('passMileStone')
             this.board.mileStone *= 2
             this.board.switchState('shuffle')
@@ -24,7 +24,7 @@ class IdleState extends BoardState {
         }
 
         if (this.board.checkAll().length > 0) {
-            this.board.switchState('kill')
+            await this.board.switchState('kill')
             return
         }
         this.scheduleOnce(this.hint, 10)

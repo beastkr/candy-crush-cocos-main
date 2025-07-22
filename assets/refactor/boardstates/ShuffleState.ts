@@ -29,7 +29,9 @@ class ShuffleState extends BoardState {
                     this.board.board[row][col].getCoordinate().x,
                     this.board.board[row][col].getCoordinate().y
                 )
-                this.movepromises.push(this.board.board[row][col].move(pos.x, pos.y, 1, 'backOut'))
+                this.movepromises.push(
+                    this.board.board[row][col].move(pos.x, pos.y, 0.5, 'backOut')
+                )
             }
         }
     }
@@ -90,7 +92,7 @@ class ShuffleState extends BoardState {
                         .repeat(
                             1,
                             tween()
-                                .to(3, { eulerAngles: new Vec3(0, 0, 360) })
+                                .to(2, { eulerAngles: new Vec3(0, 0, 360) })
                                 .call(() => {
                                     this.board.boardNode!.eulerAngles = new Vec3(0, 0, 0)
                                 })
@@ -169,7 +171,7 @@ class ShuffleState extends BoardState {
                 })
                 visited.add(bestPos)
                 this.promises.push(
-                    this.board.board[row][col].move(bestPos.x, bestPos.y, 1, 'sineOut')
+                    this.board.board[row][col].move(bestPos.x, bestPos.y, 0.8, 'sineOut')
                 )
             }
         }
@@ -198,7 +200,7 @@ class ShuffleState extends BoardState {
                         this.board.board[row][col].move(
                             positions[0][0].x,
                             positions[0][0].y,
-                            1,
+                            0.8,
                             'sineOut'
                         )
                     )

@@ -1,5 +1,6 @@
-import { _decorator, tween } from 'cc'
+import { _decorator, tween, Vec3 } from 'cc'
 import GameConfig from '../../constants/GameConfig'
+import KillState from '../boardstates/KillState'
 import Match3Board from '../Match3Board'
 import Diamond from './Diamond'
 import { SubTile } from './SubTile'
@@ -38,6 +39,8 @@ export class ExplosionSubTile extends SubTile {
         return temp.filter((d) => !d.pending)
     }
     public launch(board: Match3Board): Promise<void>[] {
+        this.diamond.exploEff!.active = true
+        this.diamond.exploEff!.setScale(new Vec3())
         // if (!this.diamond.node.active) return []
         console.log('launch expl')
         const prom: Promise<void>[] = []
@@ -45,29 +48,84 @@ export class ExplosionSubTile extends SubTile {
         console.log(centerPos)
         const relative = this.getRelative(board)
         const excluded = new Set(relative.concat(this.diamond))
+        prom.push(
+            new Promise<void>((resolve) => {
+                tween(this.diamond.exploEff!)
+                    .to(0.9, { scale: new Vec3(30, 30) }) // return
+                    .call(() => {
+                        this.diamond.exploEff?.setScale(new Vec3())
+                        this.diamond.exploEff!.active = false
+                        resolve()
+                    })
+                    .start()
+            })
+        )
+        prom.push(this.diamond.doShrink(0, 0.5, board, false))
 
         for (let y = 0; y < GameConfig.GridHeight; y++) {
             for (let x = 0; x < GameConfig.GridWidth; x++) {
                 const dia = board.board[y][x]
-                if (!dia || excluded.has(dia)) continue
+                if (!dia || excluded.has(dia) || dia.getEffect() != 'tile' || dia.pending) continue
 
                 const originalPos = dia.node.position.clone()
-                const offset = originalPos
+                const targetPos = originalPos
                     .clone()
                     .subtract(centerPos)
                     .normalize()
                     .multiplyScalar(30)
+                    .add(originalPos)
 
-                prom.push(
-                    new Promise<void>((resolve) => {
-                        tween(dia.node)
-                            .to(0.1, { position: originalPos.add(offset) }) // move slightly out
-                            .to(0.05, { position: originalPos }, { easing: 'bounceOut' }) // return
-                            .call(() => resolve())
-                            .start()
-                    })
-                )
+                if (!dia.pushed) {
+                    dia.pushed = true
+
+                    if (!dia.originalPosition) {
+                        dia.originalPosition = dia.node.position.clone()
+                    }
+                    const originalPos = dia.originalPosition
+                    const targetPos = originalPos
+                        .clone()
+                        .subtract(centerPos)
+                        .normalize()
+                        .multiplyScalar(30)
+                        .add(originalPos)
+
+                    prom.push(
+                        new Promise<void>((resolve) => {
+                            tween(dia.node)
+                                .to(0.3, { position: targetPos }) // move out
+                                .to(0.3, { position: originalPos }, { easing: 'bounceOut' }) // return
+                                .call(() => {
+                                    dia.pushed = false
+                                    dia.originalPosition = null // cleanup
+                                    resolve()
+                                })
+                                .start()
+                        })
+                    )
+                }
             }
+        }
+        const r = relative.filter((d) => d.getEffect() == 'tile').filter((d) => !d.pending)
+
+        for (const dia of r) {
+            if (dia.pending) continue
+            dia.pending = true
+            prom.push(dia.doShrink(0, 0.5, board))
+        }
+        const t = relative.filter((d) => d.getEffect() != 'tile').filter((d) => !d.pending)
+        var count = 0
+        for (const d of t) {
+            count++
+            prom.push(
+                (async () => {
+                    await Match3Board.delay(100 * count)
+                    if (d.getEffect() != 'tile' && board.getCurrentState() instanceof KillState) {
+                        await Promise.all([
+                            (board.getCurrentState() as KillState).killMultipleGrid([d], false),
+                        ])
+                    }
+                })()
+            )
         }
 
         return prom

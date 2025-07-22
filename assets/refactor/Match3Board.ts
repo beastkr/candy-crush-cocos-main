@@ -1,14 +1,4 @@
-import {
-    _decorator,
-    AudioSource,
-    Component,
-    instantiate,
-    Node,
-    ParticleSystem2D,
-    Prefab,
-    Sprite,
-    Vec3,
-} from 'cc'
+import { _decorator, AudioSource, Component, instantiate, Node, Prefab, Sprite, Vec3 } from 'cc'
 import GameConfig from '../constants/GameConfig'
 import BoardState from './boardstates/BoardState'
 import FallState from './boardstates/FallState'
@@ -16,6 +6,7 @@ import IdleState from './boardstates/IdleState'
 import KillState from './boardstates/KillState'
 import PauseState from './boardstates/PauseState'
 import ShuffleState from './boardstates/ShuffleState'
+import { Confetti } from './Confetti'
 import Diamond from './tile/Diamond'
 
 const { ccclass, property } = _decorator
@@ -36,10 +27,10 @@ class Match3Board extends Component {
     @property(Node)
     public bgNode: Node | null = null
     public pausing = false
-    public mileStone: number = 500
-    public turn = 5
-    @property(ParticleSystem2D)
-    public confetti: ParticleSystem2D[] = []
+    public mileStone: number = 1000
+    public turn = 10
+    @property(Confetti)
+    public confetti: Confetti | null = null
     @property(AudioSource)
     public sfx: AudioSource | null = null
     @property(AudioSource)
@@ -50,9 +41,7 @@ class Match3Board extends Component {
     public highscore: number = 0
 
     public launchConfetti() {
-        this.confetti.forEach((element) => {
-            ;(element as ParticleSystem2D).resetSystem()
-        })
+        this.confetti?.launch()
     }
 
     private state: { [key: string]: BoardState } = {}
@@ -103,9 +92,11 @@ class Match3Board extends Component {
     protected update(dt: number): void {
         // console.log(this.currentState)
         // if (Match3Board.SoundOn && !this.sfx?.playing) this.sfx?.play()
+        // this.launchConfetti()
         this.currentState?.onUpdate()
     }
     protected start(): void {
+        this.confetti?.init(100)
         if (!Match3Board.SoundOn) this.sfx?.pause()
         else this.sfx?.play()
         Match3Board.score = 0
@@ -114,12 +105,12 @@ class Match3Board extends Component {
         this.getHighscore()
     }
 
-    public switchState(state: string, first?: boolean, dia?: Diamond[]) {
+    public async switchState(state: string, first?: boolean, dia?: Diamond[]) {
         if (this.pausing) return
         console.log('switch tp: ', state)
         this.currentState?.onExit()
         this.currentState = this.state[state]
-        this.currentState.onEnter(first, dia)
+        await this.currentState.onEnter(first, dia)
     }
 
     private createBoard() {
@@ -237,6 +228,23 @@ class Match3Board extends Component {
 
         return temp.length >= 3 ? temp : []
     }
+    public getNeighbors(x: number, y: number): Diamond[] {
+        const dirs = [
+            [0, 1],
+            [1, 0],
+            [0, -1],
+            [-1, 0],
+        ]
+        const neighbors: Diamond[] = []
+        for (const [dx, dy] of dirs) {
+            const nx = x + dx
+            const ny = y + dy
+            if (nx >= 0 && nx < this.board[0].length && ny >= 0 && ny < this.board.length) {
+                neighbors.push(this.board[ny][nx])
+            }
+        }
+        return neighbors
+    }
 
     public getMatch(dia: Diamond): Diamond[] {
         var verticleMatch = this.getVerticleMatch(dia)
@@ -259,6 +267,10 @@ class Match3Board extends Component {
             })
         })
         return temp
+    }
+
+    static delay(time: number): Promise<void> {
+        return new Promise((resolve) => setTimeout(resolve, time))
     }
 }
 export default Match3Board

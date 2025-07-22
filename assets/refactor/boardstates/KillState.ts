@@ -7,53 +7,108 @@ class KillState extends BoardState {
     private isFirstKill: boolean = false
     private swappedDia: Diamond[] = []
     private promises: Promise<void>[] = []
-    public onEnter(first: boolean = false, dia: Diamond[] = []): void {
-        if (this.board.pausing) this.board.switchState('pause')
+    private set: Set<Diamond[]> = new Set<Diamond[]>()
+
+    public async onEnter(first: boolean = false, dia: Diamond[] = []): Promise<void> {
+        this.set = new Set<Diamond[]>()
+        if (this.board.pausing) {
+            this.board.switchState('pause')
+            return
+        }
+
         console.log('kill')
         this.promises = []
+
         if (first) {
             this.startKillTurn(dia[0], dia[1])
-            this.firstKill()
-        } else this.killAllSame()
-        Promise.all(this.promises).then(() => {
-            this.pushAll()
-            this.pendDone()
-            this.board.switchState('fall')
-        })
+            await this.firstKill()
+        } else {
+            await this.killAllSame()
+        }
+
+        await Promise.all(this.promises)
+
+        await this.updateSpecial()
+
+        this.pushAll()
+        this.pendDone()
+        await this.board.switchState('fall')
     }
+
     public onExit(): void {
         this.isFirstKill = false
         this.swappedDia = []
     }
+
     public onUpdate(): void {}
+
+    public async updateSpecial() {
+        const specialPromises: Promise<void>[] = []
+        for (const listDia of this.set) {
+            this.makeEffect(listDia)
+            listDia[0].pending = false
+            specialPromises.push(listDia[0].doShrink(1, 0.2, this.board, false))
+        }
+        await Promise.all(specialPromises)
+    }
 
     public startKillTurn(dia1: Diamond, dia2: Diamond) {
         this.swappedDia.push(dia1)
         this.swappedDia.push(dia2)
     }
-    public firstKill() {
-        this.killMultipleGrid(this.board.getMatch(this.swappedDia[0]))
-        this.killMultipleGrid(this.board.getMatch(this.swappedDia[1]))
+
+    public async firstKill() {
+        const killPromise: Promise<void>[] = []
+        killPromise.push(this.killMultipleGrid(this.board.getMatch(this.swappedDia[0])))
+        killPromise.push(this.killMultipleGrid(this.board.getMatch(this.swappedDia[1])))
+        await Promise.all(killPromise)
     }
 
-    public killMultipleGrid(diamonds: Diamond[], createEff: boolean = true): void {
+    public async killMultipleGrid(diamonds: Diamond[], createEff: boolean = true): Promise<void> {
+        const proms: Promise<void>[] = []
+        const killproms: Promise<void>[] = []
         if (Match3Board.SoundOn) this.board.diaSFX?.play()
+
         diamonds = diamonds.filter((d) => !d.pending)
+        var count = 0
+        // Handle specials sequentially with await
         for (const dia of diamonds) {
-            this.handleSpecial(dia)
+            killproms.push(this.handleSpecial(dia))
+
+            if (dia.getEffect() != 'tile') count++
         }
-        // diamonds = diamonds.filter((d) => d.node.active)
-        if (createEff) {
-            this.makeEffect(diamonds) // Tạo hiệu ứng trước khi xử lý kill
-        }
+
         diamonds = diamonds.filter((d) => !d.pending)
+        if (createEff) {
+            if (this.isEffectable(diamonds)) {
+                this.set.add(diamonds)
+            }
+        }
+        await Match3Board.delay(200)
         for (const dia of diamonds) {
             if (dia.getEffect() == 'tile') {
                 const prom = dia.doShrink(0, 0.4, this.board)
-                this.promises.push(prom)
+                proms.push(prom)
             }
         }
+
+        // Wait until all animations and special kills complete
+
+        // Create new effect tile AFTER all kills done
+
+        // Filter out special tile from shrink list
+        const normalTiles = diamonds.filter((d) => d.getEffect() == 'tile')
+        for (const dia of normalTiles) {
+            proms.push(dia.doShrink(0, 0.4, this.board))
+        }
+
+        // await Promise.all(killproms)
+        await Promise.all(proms)
+        for (const prom of killproms) {
+            await prom
+        }
     }
+
     private pendDone() {
         for (const row of this.board.board) {
             for (const d of row) {
@@ -61,6 +116,7 @@ class KillState extends BoardState {
                     d.node.active = false
                     d.pending = false
                     d.getSprite()?.node.setScale(1, 1, 1)
+                    d.setType('tile')
                 }
             }
         }
@@ -79,58 +135,86 @@ class KillState extends BoardState {
         }
     }
 
-    public handleSpecial(dia: Diamond): void {
+    public async handleSpecial(dia: Diamond): Promise<void> {
         if (dia.getEffect() != 'tile') {
-            this.promises.push(...dia.emitOnKill(this.board))
-            dia.doShrink(0, 0.4, this.board)
-            // Get related diamonds and add them to be processed, but don't recursively call handleSpecial
-            const relatedDiamonds = dia.getRelative(this.board)
-            this.killMultipleGrid(relatedDiamonds, false)
+            // Play effect and shrink
+
+            const emit = dia.emitOnKill(this.board)
+
+            // const killPromise: Promise<void>[] = []
+            dia.pending = true
+            await Promise.all([...emit, dia.doShrink(0, 0.4, this.board)])
+
+            // const relatedDiamonds = dia.getRelative(this.board).filter((dia) => !dia.pending)
+            // const relativeNoEffect = relatedDiamonds
+            //     .filter((dia) => dia.getEffect() == 'tile')
+            //     .filter((dia) => !dia.pending)
+            // killPromise.push(this.killMultipleGrid(relativeNoEffect, false))
+
+            // const relativeEffect = relatedDiamonds
+            //     .filter((dia) => dia.getEffect() != 'tilree')
+            //     .filter((dia) => !dia.pending)
+            // await Promise.all(killPromise)
+
+            // await this.killMultipleGrid(relativeEffect, false)
         }
 
         dia.setEffect('tile')
     }
 
     addRowEffect(dia: Diamond) {
-        this.combine(dia)
+        // this.combine(dia)
         dia.setEffect('row')
         dia.pending = false
     }
+
     addColumnEffect(dia: Diamond) {
-        this.combine(dia)
+        // this.combine(dia)
         dia.setEffect('column')
         dia.pending = false
     }
+
     addExplosionEffect(dia: Diamond) {
-        this.combine(dia)
+        // this.combine(dia)
         dia.setEffect('explosion')
         dia.pending = false
     }
 
     addRainbowEffect(dia: Diamond) {
-        this.combine(dia)
+        // this.combine(dia)
         dia.setEffect('rainbow')
         dia.pending = false
     }
-    makeEffect(dia: Diamond[]) {
+
+    public isEffectable(dia: Diamond[]): boolean {
+        return dia.length > 3
+    }
+
+    makeEffect(dia: Diamond[]): Diamond | null {
         if (dia.length == 4) {
             if (this.board.getVerticleMatch(dia[0]).length == 4) this.addRowEffect(dia[0])
             else this.addColumnEffect(dia[0])
+            return dia[0]
         }
+
         if (dia.length >= 5) {
             if (
                 this.board.getVerticleMatch(dia[0]).length == 0 ||
                 this.board.getHorizontalMatch(dia[0]).length == 0
             ) {
                 this.addRainbowEffect(dia[0])
-            } else this.addExplosionEffect(dia[0])
+            } else {
+                this.addExplosionEffect(dia[0])
+            }
+            return dia[0]
         }
-        // if (dia.length > 0) dia[0].node.setScale(new Vec3(1, 1, 1))
+
+        return null
     }
 
-    private killAllSame(): void {
-        console.log('kill')
+    private async killAllSame(): Promise<void> {
         const visited = new Set<string>()
+        const killPromise: Promise<void>[] = []
 
         for (let row of this.board.board) {
             for (const tile of row) {
@@ -143,9 +227,8 @@ class KillState extends BoardState {
                 if (visited.has(key)) continue
 
                 const match = this.board.getMatch(tile)
-                if (match.length < 3) continue // Không đủ 3 thì bỏ
+                if (match.length < 3) continue
 
-                // Tìm tile trong nhóm match này có nhiều match nhất
                 let bestTile = tile
                 let bestSize = match.length
 
@@ -157,7 +240,6 @@ class KillState extends BoardState {
                     }
                 }
 
-                // Kill match tại tile nhiều match nhất
                 const finalMatch = this.board.getMatch(bestTile)
                 const killKeys: string[] = []
 
@@ -168,7 +250,6 @@ class KillState extends BoardState {
                     killKeys.push(k)
                 }
 
-                // Kiểm tra nếu chưa visited thì mới kill
                 let canKill = false
                 for (const k of killKeys) {
                     if (!visited.has(k)) {
@@ -177,19 +258,22 @@ class KillState extends BoardState {
                     }
                 }
 
-                let unmoveTile = finalMatch.filter((d) => d.getCoordinate().y == d.lastcoordinate.y)
-                let movedTile = finalMatch.filter((d) => d.getCoordinate().y != d.lastcoordinate.y)
+                if (!canKill) continue
 
-                let matching = []
-                matching.push(...movedTile, ...unmoveTile)
-                console.log(matching)
+                for (const k of killKeys) visited.add(k)
 
-                if (canKill) {
-                    for (const k of killKeys) visited.add(k)
-                    this.killMultipleGrid(matching)
-                }
+                const unmoveTile = finalMatch.filter(
+                    (d) => d.getCoordinate().y == d.lastcoordinate.y
+                )
+                const movedTile = finalMatch.filter(
+                    (d) => d.getCoordinate().y != d.lastcoordinate.y
+                )
+                const matching = [...movedTile, ...unmoveTile]
+
+                killPromise.push(this.killMultipleGrid(matching))
             }
         }
+        await Promise.all(killPromise)
     }
 
     private pushAll() {
@@ -198,31 +282,26 @@ class KillState extends BoardState {
                 dia.lastcoordinate = { x: dia.getCoordinate().x, y: dia.getCoordinate().y }
             }
         }
+
         const rows = this.board.board.length
         const cols = this.board.board[0].length
 
-        // For each column, move used tiles down and unused tiles up
         for (let x = 0; x < cols; x++) {
             const usedTiles: Diamond[] = []
             const unusedTiles: Diamond[] = []
 
-            // Separate used and unused tiles in this column
             for (let y = 0; y < rows; y++) {
                 const tile = this.board.board[y][x]
                 if (!tile.pending) {
                     usedTiles.push(tile)
                 } else {
                     unusedTiles.push(tile)
-                    // Start tile from above the grid and animate it falling down
                     tile.node.setPosition(Match3Board.coordToPos(tile.getCoordinate().x, 0).x, 700)
                 }
             }
 
-            // Place used tiles at the bottom, unused tiles at the top
-            let newColumn: Diamond[] = []
-            newColumn = [...unusedTiles, ...usedTiles]
+            const newColumn = [...unusedTiles, ...usedTiles]
 
-            // Update the grid and tile coordinates
             for (let y = 0; y < rows; y++) {
                 const tile = newColumn[y]
                 tile.getCoordinate().y = y
@@ -232,4 +311,5 @@ class KillState extends BoardState {
         }
     }
 }
+
 export default KillState

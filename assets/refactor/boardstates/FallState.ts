@@ -3,16 +3,15 @@ import BoardState from './BoardState'
 
 class FallState extends BoardState {
     promises: Promise<void>[] = []
-    public onEnter(): void {
+    public async onEnter() {
         if (this.board.pausing) this.board.switchState('pause')
         this.promises = []
         console.log('move down')
         this.reShowTile()
         this.moveDown()
-        Promise.all(this.promises).then(() => {
-            if (this.board.checkAll().length > 0) this.board.switchState('kill')
-            else this.board.switchState('idle')
-        })
+        await Promise.all(this.promises)
+        if (this.board.checkAll().length > 0) await this.board.switchState('kill')
+        else this.board.switchState('idle')
     }
     public onExit(): void {}
     public onUpdate(): void {}
@@ -24,6 +23,7 @@ class FallState extends BoardState {
                     dia.randomType()
                 }
                 dia.node.setScale(1, 1, 1)
+                dia.pushed = false
             }
         }
     }

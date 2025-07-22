@@ -27,6 +27,9 @@ const { ccclass, property } = _decorator
 
 @ccclass('Diamond')
 class Diamond extends Component {
+    public originalPosition: Vec3 | null = null
+
+    public pushed = false
     public rowFX: Sprite[] = []
     @property(ParticleSystem2D)
     public particle: ParticleSystem2D | null = null
@@ -38,6 +41,8 @@ class Diamond extends Component {
     private rowFXPrefab: Prefab | null = null
     @property(AudioSource)
     public sfx: AudioSource | null = null
+    @property(Node)
+    public exploEff: Node | null = null
 
     private coordinate: { x: number; y: number } = { x: 0, y: 0 }
     public lastcoordinate: { x: number; y: number } = { x: 0, y: 0 }
@@ -221,7 +226,12 @@ class Diamond extends Component {
         }
         console.log(this.rowFX)
     }
-    public doShrink(newScale: number, duration: number = 0.4, board: Match3Board): Promise<void> {
+    public doShrink(
+        newScale: number,
+        duration: number = 0.4,
+        board: Match3Board,
+        disableAfer: boolean = true
+    ): Promise<void> {
         // this.lastcoordinate = { x: this.coordinate.x, y: this.coordinate.y }
         this.particle!.startColor = this.light!.color = new Color(
             this.sprite?.color.r,
@@ -229,7 +239,7 @@ class Diamond extends Component {
             this.sprite?.color.b,
             50
         )
-        this.pending = true
+        if (disableAfer) this.pending = true
         this.particle?.resetSystem()
         return new Promise<void>((resolve: Function) => {
             tween(this.sprite!.node)
@@ -242,7 +252,7 @@ class Diamond extends Component {
         })
     }
     public getRelative(board: Match3Board): Diamond[] {
-        return this.currentSubTile!.getRelative(board)
+        return this.currentSubTile?.getRelative(board) || []
     }
     public move(
         targetX: number,

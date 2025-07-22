@@ -1,15 +1,4 @@
-import {
-    _decorator,
-    Button,
-    Component,
-    director,
-    Label,
-    Node,
-    ProgressBar,
-    RichText,
-    tween,
-    Vec3,
-} from 'cc'
+import { _decorator, Button, Component, Label, Node, ProgressBar, RichText, tween, Vec3 } from 'cc'
 import Match3Board from '../Match3Board'
 import IdleState from '../boardstates/IdleState'
 const { ccclass, property } = _decorator
@@ -18,8 +7,7 @@ const { ccclass, property } = _decorator
 export class UIManager extends Component {
     @property(Match3Board)
     private board: Match3Board | null = null
-    @property(Button)
-    private newGameButton: Button | null = null
+
     @property(Node)
     private pausePopUp: Node | null = null
     @property(Button)
@@ -125,7 +113,37 @@ export class UIManager extends Component {
     }
 
     public newGame() {
-        this.idleState?.onExit()
-        director.loadScene('GameScene-refactor')
+        // this.idleState?.onExit()
+        // director.loadScene('GameScene-refactor')
+        const promises: Promise<void>[] = []
+        if (this.pausePopUp?.active == true)
+            promises.push(
+                new Promise<void>((resolve) => {
+                    tween(this.pausePopUp!)
+                        .to(0.5, { position: new Vec3(0, 900) }, { easing: 'sineIn' })
+                        .call(() => {
+                            resolve()
+                        })
+                        .start()
+                })
+            )
+        if (this.gameOverPopup?.active == true)
+            promises.push(
+                new Promise<void>((resolve) => {
+                    tween(this.gameOverPopup!)
+                        .to(0.8, { position: new Vec3(0, 900) }, { easing: 'bounceOut' })
+                        .call(() => {
+                            resolve()
+                        })
+                        .start()
+                })
+            )
+        Promise.all(promises).then(() => {
+            this.board!.pausing = false
+            this.board?.switchState('shuffle')
+            Match3Board.score = 0
+            this.board!.mileStone = 1000
+            this.board!.turn = 10
+        })
     }
 }
