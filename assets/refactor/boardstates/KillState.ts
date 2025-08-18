@@ -40,7 +40,7 @@ class KillState extends BoardState {
         this.swappedDia = []
     }
 
-    public onUpdate(): void {}
+    public onUpdate(): void { }
 
     public async updateSpecial() {
         const specialPromises: Promise<void>[] = []

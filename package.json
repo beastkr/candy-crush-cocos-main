@@ -20,6 +20,6 @@
         "prettier": "^3.6.2"
     },
     "scripts": {
-        "deploy": "gh-pages -d build/web-desktop"
+        "deploy": "gh-pages -d build/web-mobile-001"
     }
 }
