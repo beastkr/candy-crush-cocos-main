@@ -18,6 +18,12 @@ const { ccclass, property } = _decorator
 @ccclass('Tile')
 export class Tile extends Component {
     public coords: Vec3 = new Vec3()
+    public killed: boolean = false
 
+    @property(Sprite)
+    private wholeSprite: Sprite | null = null
 
+    setCoords(x: number, y: number) {
+
+    }
 }

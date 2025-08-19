@@ -74,10 +74,10 @@
         "__id__": 7
       },
       {
-        "__id__": 12
+        "__id__": 11
       },
       {
-        "__id__": 16
+        "__id__": 15
       }
     ],
     "_active": true,
@@ -95,8 +95,8 @@
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": 384,
-      "y": 683,
+      "x": 640,
+      "y": 480.00000000000006,
       "z": 0
     },
     "_lrot": {
@@ -187,7 +187,7 @@
     "_priority": 0,
     "_fov": 45,
     "_fovAxis": 0,
-    "_orthoHeight": 683,
+    "_orthoHeight": 480,
     "_near": 0,
     "_far": 2000,
     "_color": {
@@ -316,8 +316,8 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 768,
-      "height": 1366
+      "width": 1280,
+      "height": 960
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -366,29 +366,8 @@
     },
     "_enabled": true,
     "__prefab": null,
-    "grid": {
-      "__id__": 11
-    },
-    "pool": {
-      "__id__": 15
-    },
-    "tilePrefab": {
-      "__uuid__": "9b46d6b1-ad25-4436-bb7c-396f64eae86f",
-      "__expectedType__": "cc.Prefab"
-    },
+    "tilePool": null,
     "_id": "62yKoROMlJI5fZ46/mTCWu"
-  },
-  {
-    "__type__": "047c14s9cxD4IZqztDgvRx2",
-    "_name": "",
-    "_objFlags": 0,
-    "__editorExtras__": {},
-    "node": {
-      "__id__": 12
-    },
-    "_enabled": true,
-    "__prefab": null,
-    "_id": "c59QJlsfBAVYYyxA11YuIh"
   },
   {
     "__type__": "cc.Node",
@@ -402,13 +381,13 @@
     "_active": true,
     "_components": [
       {
+        "__id__": 12
+      },
+      {
         "__id__": 13
       },
       {
         "__id__": 14
-      },
-      {
-        "__id__": 11
       }
     ],
     "_prefab": null,
@@ -447,14 +426,14 @@
     "_objFlags": 0,
     "__editorExtras__": {},
     "node": {
-      "__id__": 12
+      "__id__": 11
     },
     "_enabled": true,
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 768,
-      "height": 1366
+      "width": 1280,
+      "height": 960
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -469,7 +448,7 @@
     "_objFlags": 0,
     "__editorExtras__": {},
     "node": {
-      "__id__": 12
+      "__id__": 11
     },
     "_enabled": true,
     "__prefab": null,
@@ -494,16 +473,16 @@
     "_id": "60IOCnQlBITKPOO5XMlYxX"
   },
   {
-    "__type__": "73922aUykhIg7+DtigexiFC",
+    "__type__": "047c14s9cxD4IZqztDgvRx2",
     "_name": "",
     "_objFlags": 0,
     "__editorExtras__": {},
     "node": {
-      "__id__": 16
+      "__id__": 11
     },
     "_enabled": true,
     "__prefab": null,
-    "_id": "4dleTaLYlPWq4dnOZMnAbY"
+    "_id": "c59QJlsfBAVYYyxA11YuIh"
   },
   {
     "__type__": "cc.Node",
@@ -517,13 +496,13 @@
     "_active": true,
     "_components": [
       {
+        "__id__": 16
+      },
+      {
         "__id__": 17
       },
       {
         "__id__": 18
-      },
-      {
-        "__id__": 15
       }
     ],
     "_prefab": null,
@@ -562,14 +541,14 @@
     "_objFlags": 0,
     "__editorExtras__": {},
     "node": {
-      "__id__": 16
+      "__id__": 15
     },
     "_enabled": true,
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 768,
-      "height": 1366
+      "width": 1280,
+      "height": 960
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -584,7 +563,7 @@
     "_objFlags": 0,
     "__editorExtras__": {},
     "node": {
-      "__id__": 16
+      "__id__": 15
     },
     "_enabled": true,
     "__prefab": null,
@@ -609,6 +588,18 @@
     "_id": "7fx10L0ABNZKyfh1IED1bQ"
   },
   {
+    "__type__": "73922aUykhIg7+DtigexiFC",
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 15
+    },
+    "_enabled": true,
+    "__prefab": null,
+    "_id": "4dleTaLYlPWq4dnOZMnAbY"
+  },
+  {
     "__type__": "cc.UITransform",
     "_name": "",
     "_objFlags": 0,
@@ -620,8 +611,8 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 768,
-      "height": 1366
+      "width": 1280,
+      "height": 960
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
