@@ -8,8 +8,8 @@ const { ccclass, property } = _decorator
 @ccclass('GameManager')
 export default class GameManager extends Component {
     public static instance: GameManager | null = null
-    @property(TilePool)
-    tilePool: TilePool | null = null
+    @property(TileGrid)
+    tilePool: TileGrid | null = null
 
     public start(): void {
         if (GameManager) {
