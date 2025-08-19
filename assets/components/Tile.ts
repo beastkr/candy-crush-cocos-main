@@ -24,6 +24,17 @@ export class Tile extends Component {
     private wholeSprite: Sprite | null = null
 
     setCoords(x: number, y: number) {
+        this.coords = new Vec3(x, y)
+    }
+
+    moveToRealPos() {
 
     }
+
+    async moveTo(pos: Vec3): Promise<void> {
+        return new Promise<void>((resolve) => {
+            tween(this.node).to(0.5, { position: pos }).call(() => resolve()).start()
+        })
+    }
+
 }
