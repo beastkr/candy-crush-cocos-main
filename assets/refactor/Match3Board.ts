@@ -51,7 +51,7 @@ class Match3Board extends Component {
 
     public launchConfetti() {
         this.confetti.forEach((element) => {
-            ;(element as ParticleSystem2D).resetSystem()
+            ; (element as ParticleSystem2D).resetSystem()
         })
     }
 

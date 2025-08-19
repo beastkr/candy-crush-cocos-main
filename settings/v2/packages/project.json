@@ -3,32 +3,10 @@
   "general": {
     "designResolution": {
       "width": 1280,
-      "height": 720,
-      "fitHeight": true,
-      "fitWidth": false
-      
+      "height": 960,
+      "fitHeight": false,
+      "fitWidth": true
     }
   },
-  "custom_joint_texture_layouts": [],
-  "layer": [
-    {
-      "name": "aaa",
-      "value": 524288
-    }
-  ],
-  "sorting-layer": {
-    "layers": [
-      {
-        "id": 0,
-        "name": "default",
-        "value": 0
-      },
-      {
-        "id": 1,
-        "name": "border",
-        "value": 1
-      }
-    ],
-    "increaseId": 1
-  }
+  "custom_joint_texture_layouts": []
 }
